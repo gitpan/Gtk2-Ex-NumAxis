@@ -1,0 +1,31 @@
+Changes
+COPYING
+debian/changelog
+debian/compat
+debian/control
+debian/copyright
+debian/rules
+debian/source/format
+debian/watch
+devel/numaxis-textview.pl
+devel/run.pl
+devel/screenshot.pl
+examples/builder.pl
+examples/settings.pl
+inc/my_pod2html
+inc/MyMakeMakerExtras.pm
+lib/Gtk2/Ex/NumAxis.pm
+Makefile.PL
+MANIFEST			This list of files
+MANIFEST.SKIP
+SIGNATURE
+t/0-META-read.t
+t/0-Test-DistManifest.t
+t/0-Test-Pod.t
+t/0-Test-Synopsis.t
+t/0-Test-YAML-Meta.t
+t/MyTestHelpers.pm
+t/NumAxis-buildable.t
+t/NumAxis-weaken.t
+t/NumAxis.t
+META.yml                                 Module meta-data (added by MakeMaker)

@@ -1,0 +1,53 @@
+This file contains message digests of all files listed in MANIFEST,
+signed via the Module::Signature module, version 0.63.
+
+To verify the content in this distribution, first make sure you have
+Module::Signature installed, then type:
+
+    % cpansign -v
+
+It will check each file's integrity, as well as the signature's
+validity.  If "==> Signature verified OK! <==" is not displayed,
+the distribution may already have been compromised, and you should
+not run its Makefile.PL or Build.PL.
+
+-----BEGIN PGP SIGNED MESSAGE-----
+Hash: SHA1
+
+SHA1 842745cb706f8f2126506f544492f7a80dbe29b3 COPYING
+SHA1 2741a6f334e0312036a884255a6bc4d8b95471f4 Changes
+SHA1 4be4aea6a4cae9f6cbb1ad4ff35a28fdf99076cd MANIFEST
+SHA1 9f057ed3ba7d042426c4d899f7685b4ae05076b2 MANIFEST.SKIP
+SHA1 144069dc8b92f597f85d87d05f0f36ff01c28dc0 META.yml
+SHA1 8e3760d50b10698314ba528d419392c427ba8a40 Makefile.PL
+SHA1 b823890eea65880d0e1f6eb379ddc1209b7b53d9 debian/changelog
+SHA1 ac3478d69a3c81fa62e60f5c3696165a4e5e6ac4 debian/compat
+SHA1 a36b68392ba26c1c3a44bdfd0c85e38847eded20 debian/control
+SHA1 21f3519bc735108e5c9f9c523a74b156c2d0a25c debian/copyright
+SHA1 1a7c155a471bd803baa79a5ed89e2724d6d40bf7 debian/rules
+SHA1 61652cd1568dcf2614df833eba241755eee34e89 debian/source/format
+SHA1 52766c7702bb1e0178cc41cdc203f60164a68a0a debian/watch
+SHA1 1f2d73b73b11ead39466678f8c95aa34ed8f42d8 devel/numaxis-textview.pl
+SHA1 b00d18c3353fe300eab8f91e2911b8a1891071ac devel/run.pl
+SHA1 19ef230278c646e08bbb39f24a55d47446e70b0a devel/screenshot.pl
+SHA1 8087a6ed81419f03764b50a61bff2ec2c98266ef examples/builder.pl
+SHA1 3b8c72c4e76e67f59362f6989f10e182b330d747 examples/settings.pl
+SHA1 91f40a4f9faab492cacef63fc315d3eb9de22584 inc/MyMakeMakerExtras.pm
+SHA1 692a1ddc2ca6b98cac7b48ea40bc1ac1509e8ed9 inc/my_pod2html
+SHA1 eeb5c17a4f2f8db3e54f19d8b86430ffcbaa34e6 lib/Gtk2/Ex/NumAxis.pm
+SHA1 9127f78a0dfa04976acbb979dd7862ef59a74c58 t/0-META-read.t
+SHA1 37abd43b41068804ea4bb099fdd89af21be82926 t/0-Test-DistManifest.t
+SHA1 8f93fb4c8f0424a4442cc93c9a2e86342ef55281 t/0-Test-Pod.t
+SHA1 1de8f07883f6bf1a2ef79f2cb8adf1deb3f61cee t/0-Test-Synopsis.t
+SHA1 fb517c2fae5ddac559318bf6a224949115ea3129 t/0-Test-YAML-Meta.t
+SHA1 cc9d34bca6c40211dd6aa8fee844bb1a7f908461 t/MyTestHelpers.pm
+SHA1 836dc8aaa7c1f096c1d31dc2944aab942266ed18 t/NumAxis-buildable.t
+SHA1 738dc74e5ffa5547d64abe5734dc31740ac33be6 t/NumAxis-weaken.t
+SHA1 805d80e84cddc27eace3bf7ed39ced43c0a7e4ef t/NumAxis.t
+-----BEGIN PGP SIGNATURE-----
+Version: GnuPG v1.4.10 (GNU/Linux)
+
+iD8DBQFMgvFtLFMCIV9q3ToRAlxSAKCDzlRO7sE2W7eo0b2mj/9hZx+SSwCfSMmQ
+eFR+JJap95SscQs9hRklNbc=
+=W86G
+-----END PGP SIGNATURE-----
