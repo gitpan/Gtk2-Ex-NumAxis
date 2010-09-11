@@ -82,6 +82,10 @@ my $adj = Gtk2::Adjustment->new (-100, # value
 my $axis = Gtk2::Ex::NumAxis->new(adjustment => $adj,
                                   inverted => 1,
                                   min_decimals => 2);
+# $axis->signal_connect (number_to_text => sub {
+#                          my ($axis, $number, $decimals) = @_;
+#                          return sprintf "%.*f\nblah", $decimals, $number;
+#                         });
 $hbox->add($axis);
 
 if (0) {
@@ -107,12 +111,12 @@ if (1) {
 }
 
 my $vscroll = Gtk2::VScrollbar->new($adj);
-$vscroll->set_inverted(1);
 $hbox->pack_start($vscroll, 0,0,0);
 
 {
   my $button = Gtk2::CheckButton->new_with_label ("inverted");
   Glib::Ex::ConnectProperties->new ([$axis,'inverted'],
+                                    [$vscroll,'inverted'],
                                     [$button,'active']);
   $vbox->pack_start ($button, 0,0,0);
 }

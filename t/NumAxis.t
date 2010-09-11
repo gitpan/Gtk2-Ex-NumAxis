@@ -33,7 +33,7 @@ require Gtk2;
 Gtk2->disable_setlocale;  # leave LC_NUMERIC alone for version nums
 Gtk2->init_check
   or plan skip_all => 'due to no DISPLAY available';
-plan tests => 20;
+plan tests => 24;
 
 #------------------------------------------------------------------------------
 is (Gtk2::Ex::NumAxis::_num_integer_digits(0),       1);
@@ -97,6 +97,7 @@ is (Gtk2::Ex::NumAxis::_num_integer_digits(-100.25), 3);
 #------------------------------------------------------------------------------
 # size_request()
 
+# vertical
 {
   my $axis = Gtk2::Ex::NumAxis->new;
   my $req = $axis->size_request;
@@ -109,6 +110,28 @@ is (Gtk2::Ex::NumAxis::_num_integer_digits(-100.25), 3);
   $req = $axis->size_request;
   cmp_ok ($req->width, '>', $empty_width);
   cmp_ok ($req->height, '==', 0);
+
+  my $toplevel = Gtk2::Window->new ('toplevel');
+  $toplevel->set_default_size (100, 100);
+  $toplevel->add ($axis);
+  $toplevel->show_all;
+  $axis->size_request;
+  $toplevel->destroy;
+}
+
+# horizontal
+{
+  my $axis = Gtk2::Ex::NumAxis->new (orientation => 'horizontal');
+  my $req = $axis->size_request;
+  cmp_ok ($req->width, '==', 0);
+  cmp_ok ($req->height, '>', 0);  # always has tick width
+
+  my $empty_height = $req->height;
+
+  $axis->set (adjustment => Gtk2::Adjustment->new (2100,0,4500,1,10,300));
+  $req = $axis->size_request;
+  cmp_ok ($req->width, '==', 0);
+  cmp_ok ($req->height, '>=', $empty_height);
 
   my $toplevel = Gtk2::Window->new ('toplevel');
   $toplevel->set_default_size (100, 100);

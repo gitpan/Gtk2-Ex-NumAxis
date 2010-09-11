@@ -27,7 +27,7 @@ use POSIX qw(floor ceil);
 # uncomment this to run the ### lines
 #use Smart::Comments;
 
-our $VERSION = 1;
+our $VERSION = 2;
 
 use Glib::Ex::SignalBits;
 use Glib::Ex::SignalIds;
@@ -88,18 +88,31 @@ use Glib::Object::Subclass
                   'Invert the scale so numbers are drawn increasing from the bottom up, instead of the default top down.',
                   0,       # default
                   Glib::G_PARAM_READWRITE),
+
+                 # not documented yet ...
+                 Glib::ParamSpec->enum
+                 ('orientation',
+                  'orientation',
+                  'Horizontal or vertical display and scrolling.',
+                  'Gtk2::Orientation',
+                  'vertical',
+                  Glib::G_PARAM_READWRITE),
+
                 ];
 
 
 # as fraction of digit width
 use constant { TICK_WIDTH_FRAC => 0.8,
-               TICK_GAP_FRAC   => 0.5 };
+               TICK_GAP_FRAC   => 0.5,
+               TICK_HEIGHT_FRAC  => 0.4,
+               TICK_VGAP_FRAC    => 0.1,
+             };
 # right-margin 0.2    between number and right edge of window
 
 sub INIT_INSTANCE {
   my ($self) = @_;
   $self->{'min_decimals'} = 0; # default
-  $self->{'decided_width_for'} = 'x';
+  $self->{'decided_done_for'} = 'x';
 }
 
 sub SET_PROPERTY {
@@ -121,7 +134,7 @@ sub SET_PROPERTY {
     };
   }
 
-  $self->{'decided_width_for'} = 'x';
+  $self->{'decided_done_for'} = 'x';
   $self->queue_resize;
   $self->queue_draw;
 }
@@ -129,17 +142,24 @@ sub SET_PROPERTY {
 # 'set-scroll-adjustments' class closure
 sub _do_set_scroll_adjustments {
   my ($self, $hadj, $vadj) = @_;
-  $self->set (adjustment => $vadj);
+  $self->set (adjustment => ($self->get('orientation') eq 'horizontal'
+                             ? $hadj : $vadj));
 }
 
 # 'size-request' class closure
 sub _do_size_request {
   my ($self, $req) = @_;
   ### NumAxis _do_size_request()
-  _decide_width ($self);
-  ### NumAxis _do_size_request() return: $self->{'decided_width'}.'x0'
-  $req->width ($self->{'decided_width'});
-  $req->height (0);
+  ### orientation: $self->get('orientation')
+
+  if ($self->get('orientation') eq 'horizontal') {
+    $req->width (0);
+    $req->height (_decide_height ($self));
+  } else {
+    $req->width (_decide_width ($self));
+    $req->height (0);
+  }
+  ### NumAxis _do_size_request() return: $req->width . 'x' . $req->height
 }
 
 # 'number-to-text' class closure
@@ -155,6 +175,9 @@ sub identity {
   return $_[0];
 }
 
+my %wh = (horizontal => 'width',
+          vertical   => 'height');
+
 sub _do_expose_event {
   my ($self, $event) = @_;
   ### NumAxis _do_expose_event(): $self->get_name
@@ -169,8 +192,6 @@ sub _do_expose_event {
     return Gtk2::EVENT_PROPAGATE;
   };
 
-  _decide_width($self);  # if not already done
-
   my $lo = $adj->get_value;
   my ($unit, $unit_decimals) = _decide_unit ($self, $lo);
   ### $unit
@@ -183,19 +204,25 @@ sub _do_expose_event {
   ### $lo
   ### $hi
 
-  my $layout        = $self->{'layout'};
-  my $decimals      = $self->{'min_decimals'};
-  my $decided_width = $self->{'decided_width'};
-  my $state     = $self->state;
-  my $style     = $self->style;
-  my $win       = $self->window;
-  my ($win_width, $win_height) = $win->get_size;
+  my $layout     = _layout($self);
+  my $decimals   = $self->{'min_decimals'};
+  my $state      = $self->state;
+  my $style      = $self->style;
+  my $win        = $self->window;
+  my $orientation = $self->get('orientation');
+  my $win_pixels = do {
+    my $method = $wh{$orientation};
+    $self->allocation->$method
+  };
 
-  my $factor    = $win_height / $page_size;
+  my $factor    = $win_pixels / $page_size;
   my $offset    = 0;
   if ($self->{'inverted'}) {
     $factor = -$factor;
-    $offset = $win_height;
+    $offset = $win_pixels;
+    ### invert
+    ### $factor
+    ### $offset
   }
   $offset += -$lo * $factor;
 
@@ -204,63 +231,109 @@ sub _do_expose_event {
   my $widen = $digit_height / abs($factor);
   $lo -= $widen;
   $hi += $widen;
+  ### $win_pixels
+  ### $factor
   ### digit_height pixels: $digit_height
-  ### which is value: $digit_height / abs($factor)
-  ### widen: "by $widen to lo=$lo hi=$hi"
+  ### which is widen value: $widen
+  ### widen to: "lo=$lo hi=$hi"
   ### $unit
   ### $decimals
 
-  my $digit_width = $self->{'digit_width'};
-  my $tick_width = ceil (TICK_WIDTH_FRAC * $digit_width);
   my $tick_gc = $style->fg_gc($state);
-  my $text_x = $tick_width + ceil (TICK_GAP_FRAC * $digit_width);
-
   my $transform   = $self->{'transform'}   || \&identity;
   my $untransform = $self->{'untransform'} || \&identity;
 
   $lo = $transform->($lo);
   $hi = $transform->($hi);
   my $n = Math::Round::nhimult ($unit, $lo);
-  ### trans: "$lo to $hi, starting $n"
+  ### loop: "$lo to $hi, starting $n"
 
-  for ( ; $n <= $hi; $n += $unit) {
-    my $str = $self->signal_emit ('number-to-text', $n, $decimals);
-    $layout->set_text ($str);
-    my ($str_width, $str_height) = $layout->get_pixel_size;
+  if ($orientation eq 'horizontal') {
+    my $decided_height = _decide_height($self);
+    my $digit_height = $self->{'digit_height'};
+    my $tick_height = ceil (TICK_HEIGHT_FRAC * $digit_height);
+    my $text_y = $tick_height + ceil (TICK_VGAP_FRAC * $digit_height);
 
-    my $u = $untransform->($n);
-    my $y = floor ($factor * $u + $offset);
-    ### $str
-    ### $y
-    ### $str_width
+    for ( ; $n <= $hi; $n += $unit) {
+      my $str = $self->signal_emit ('number-to-text', $n, $decimals);
+      $layout->set_text ($str);
+      my ($str_width, $str_height) = $layout->get_pixel_size;
 
-    my $y_str = $y - int ($str_height/2); # top of text
-    if ($y_str >= $win_height || $y + $str_height <= 0) {
-      ### outside window, skip
-      next;
+      my $u = $untransform->($n);
+      my $x = floor ($factor * $u + $offset);
+      my $text_x = $x - int ($str_width/2); # left of text to centre
+      ### $x
+      ### $text_x
+
+      $win->draw_rectangle ($tick_gc,
+                            1,              # filled
+                            $x,             # x
+                            0,              # y
+                            1,              # width==1
+                            $tick_height);  # height
+      $style->paint_layout ($win,
+                            $state,
+                            1,  # use_text, for the text gc instead of the fg one
+                            $event->area,
+                            $self,       # widget
+                            __PACKAGE__, # style detail string
+                            $text_x,
+                            $text_y,
+                            $layout);
+
+      if ($x >= 0 && $x < $win_pixels  # only values more than half in window
+          && ($str_height += $text_y) > $decided_height) {
+        ### draw is higher than decided_height: "str=$str, height=$str_height cf decided_height=$decided_height"
+        $decided_height = $self->{'decided_height'} = $str_height;
+        $self->queue_resize;
+      }
     }
 
-    $win->draw_rectangle ($tick_gc,
-                          1,            # filled
-                          0,            # x
-                          $y,           # y
-                          $tick_width,  # width
-                          1);           # height==1
-    $style->paint_layout ($win,
-                          $state,
-                          1,  # use_text, for the text gc instead of the fg one
-                          $event->area,
-                          $self,       # widget
-                          __PACKAGE__, # style detail string
-                          $text_x,
-                          $y_str,
-                          $layout);
+  } else { # vertical
+    my $decided_width = _decide_width($self);
+    my $digit_width = $self->{'digit_width'};
+    my $tick_width = ceil (TICK_WIDTH_FRAC * $digit_width);
+    my $text_x = $tick_width + ceil (TICK_GAP_FRAC * $digit_width);
 
-    if ($y >= 0 && $y < $win_height  # only values more than half in window
-        && ($str_width += $text_x) > $decided_width) {
-      ### draw is wider than decided_width: "str=$str, width=$str_width cf decided_width=$decided_width"
-      $decided_width = $self->{'decided_width'} = $str_width;
-      $self->queue_resize;
+    for ( ; $n <= $hi; $n += $unit) {
+      my $str = $self->signal_emit ('number-to-text', $n, $decimals);
+      $layout->set_text ($str);
+      my ($str_width, $str_height) = $layout->get_pixel_size;
+
+      my $u = $untransform->($n);
+      my $y = floor ($factor * $u + $offset);
+      ### $str
+      ### $y
+      ### $str_width
+
+      my $text_y = $y - int ($str_height/2); # top of text
+      if ($text_y >= $win_pixels || $y + $str_height <= 0) {
+        ### outside window, skip
+        next;
+      }
+
+      $win->draw_rectangle ($tick_gc,
+                            1,            # filled
+                            0,            # x
+                            $y,           # y
+                            $tick_width,  # width
+                            1);           # height==1
+      $style->paint_layout ($win,
+                            $state,
+                            1,  # use_text, for the text gc instead of the fg one
+                            $event->area,
+                            $self,       # widget
+                            __PACKAGE__, # style detail string
+                            $text_x,
+                            $text_y,
+                            $layout);
+
+      if ($y >= 0 && $y < $win_pixels  # only values more than half in window
+          && ($str_width += $text_x) > $decided_width) {
+        ### draw is wider than decided_width: "str=$str, width=$str_width cf decided_width=$decided_width"
+        $decided_width = $self->{'decided_width'} = $str_width;
+        $self->queue_resize;
+      }
     }
   }
 
@@ -269,26 +342,24 @@ sub _do_expose_event {
 
 sub _decide_width {
   my ($self) = @_;
+  ### NumAxis _decide_width()
 
   my $adj = $self->{'adjustment'};
   my $for = ($adj
              ? join(',', $adj->lower, $adj->upper, $adj->page_size)
              : '');
-  if ($self->{'decided_width_for'} eq $for) {
-    return;
+  if ($self->{'decided_done_for'} eq $for) {
+    return $self->{'decided_width'};
   }
-  ### _decide_width()
+
   ### old decided width: $self->{'decided_width'}
-  ### was for: $self->{'decided_width_for'}
+  ### was for: $self->{'decided_done_for'}
   ### now for: $for
-  $self->{'decided_width_for'} = $for;
+  $self->{'decided_done_for'} = $for;
 
-  my $layout = ($self->{'layout'} ||= $self->create_pango_layout (''));
-  my ($digit_width, $digit_height) = layout_digit_size ($layout);
-  $self->{'digit_width'} = $digit_width;
-  $self->{'digit_height'} = $digit_height;
-
+  my $layout = _layout($self);
   my $decimals = $self->{'min_decimals'};
+  my $digit_width = $self->{'digit_width'};
   my $width = $digit_width * $decimals;
 
   if ($adj) {
@@ -311,10 +382,9 @@ sub _decide_width {
             . ('9' x $decimals);
       my $str = $self->signal_emit ('number-to-text', $n, $decimals);
       $layout->set_text ($str);
-      my ($str_width, undef) = $layout->get_pixel_size;
-      $width = max ($width, $str_width);
+      $width = max ($width, ($layout->get_pixel_size)[0]);
       ### this str: $str
-      ### is pixels: $width
+      ### gives width pixels: $width
     }
   }
 
@@ -323,31 +393,126 @@ sub _decide_width {
   ### tick width: ceil (TICK_WIDTH_FRAC * $digit_width)
   ### tick gap:   ceil (TICK_GAP_FRAC * $digit_width)
   ### _decide_width() result: $width
-  $self->{'decided_width'} = $width;
+  return ($self->{'decided_width'} = $width);
+}
+
+sub _decide_height {
+  my ($self) = @_;
+
+  if ($self->{'decided_done_for'} eq '1') {
+    return $self->{'decided_height'};
+  }
+  $self->{'decided_done_for'} = 1;
+
+  my $adj = $self->{'adjustment'};
+  ### _decide_height()
+
+  my $layout = _layout($self);
+  my $decimals = $self->{'min_decimals'};
+  my $transform = $self->{'transform'} || \&identity;
+  my $digit_height = $self->{'digit_height'};
+
+  my $height = $digit_height;
+  foreach my $un ($adj
+                  ? ($adj->lower, $adj->upper - $adj->page_size)
+                  : (0)) {
+    my $n = $transform->($un);
+    my $str = $self->signal_emit ('number-to-text', $n, $decimals);
+    $layout->set_text ($str);
+    $height = max ($height, ($layout->get_pixel_size)[1]);
+    ### this str: $str
+    ### this height: ($layout->get_pixel_size)[1]
+    ### gives height pixels: $height
+  }
+  $height += ceil(TICK_HEIGHT_FRAC * $digit_height)
+    + ceil(TICK_VGAP_FRAC * $digit_height);
+
+  ### tick height: ceil (TICK_HEIGHT_FRAC * $digit_height)
+  ### tick vgap:   ceil (TICK_VGAP_FRAC * $digit_height)
+  ### _decide_height() result: $height
+  return ($self->{'decided_height'} = $height);
 }
 
 # return ($step, $decimals)
 sub _decide_unit {
   my ($self, $value) = @_;
-  my $digit_height = $self->{'digit_height'};
-  my $win = $self->window || return (0, 0);
+  ### _decide_unit(): "value=$value"
 
-  my ($win_width, $win_height) = $win->get_size;
-  my $adj = $self->{'adjustment'} || return (0, 0);
-
-  my $page_size = $adj->page_size;
-  if ($page_size == 0) { return (0, 0); }
+  my ($win, $adj, $page_size);
+  unless (($win = $self->window)
+          && ($adj = $self->{'adjustment'})
+          && ($page_size = $adj->page_size) != 0) {
+    return (0, 0);
+  }
 
   my $transform = $self->{'transform'} || \&identity;
-  my $untrans_min_step = 2.0 * $adj->page_size * $digit_height / $win_height;
+  my $min_decimals = $self->{'min_decimals'};
+  ### $min_decimals
 
-  my $low_step =  abs ($transform->($value)
-                       - $transform->($value + $untrans_min_step));
-  my $high_step = abs ($transform->($value + $page_size)
-                       - $transform->($value + $page_size - $untrans_min_step));
-  return round_up_2_5_pow_10 (max ($low_step, $high_step));
+  if ($self->get('orientation') eq 'horizontal') {
+    my $win_width = $self->allocation->width;
+    my $layout = _layout($self);
+    my @samples = ($adj->value + 0.05 * $adj->page_size,
+                   $adj->value + 0.95 * $adj->page_size);
+    for (;;) {
+      my $str_width = max (map {
+        $layout->set_text ($self->signal_emit
+                           ('number-to-text', $_, $min_decimals));
+        ($layout->get_pixel_size)[0]
+      } @samples);
 
-  # return round_up_2_5_pow_10 (2 * $digit_height / $factor);
+      my $untrans_min_step = 2.0 * $adj->page_size * $str_width / $win_width;
+      ### page_size: $adj->page_size
+      ### $win_width
+      ### $str_width
+      ### $untrans_min_step
+
+      my $low_step =  abs ($transform->($value)
+                           - $transform->($value + $untrans_min_step));
+      my $high_step = abs ($transform->($value + $page_size)
+                           - $transform->($value + $page_size
+                                          - $untrans_min_step));
+      ### $low_step
+      ### $high_step
+      my ($unit, $decimals) = round_up_2_5_pow_10 (max ($low_step, $high_step));
+      if ($decimals <= $min_decimals) {
+        return ($unit, $decimals);
+      }
+      $min_decimals = $decimals;
+    }
+  } else {
+    my $win_height = $self->allocation->height;
+    my $str_height = $self->{'digit_height'};
+    my $untrans_min_step = 2.0 * $adj->page_size * $str_height / $win_height;
+    ### page_size: $adj->page_size
+    ### win_height: $win_height
+    ### $str_height
+    ### $untrans_min_step
+    my $low_step =  abs ($transform->($value)
+                         - $transform->($value + $untrans_min_step));
+    my $high_step = abs ($transform->($value + $page_size)
+                         - $transform->($value + $page_size
+                                        - $untrans_min_step));
+    ### $low_step
+    ### $high_step
+    return round_up_2_5_pow_10 (max ($low_step, $high_step));
+  }
+
+  # return round_up_2_5_pow_10 (2 * $str_height / $factor);
+}
+
+sub _layout {
+  my ($self) = @_;
+  my $layout = ($self->{'layout'} ||= do {
+    my $l = $self->create_pango_layout ('');
+    $l->set_alignment ('center');  # perhaps a 'justify' prop like GtkLabel?
+    $l
+  });
+  if (! defined $self->{'digit_width'}) {
+    ($self->{'digit_width'}, $self->{'digit_height'})
+      = layout_digit_size ($layout);
+  }
+  return $layout;
 }
 
 # 'style-set' and 'direction-changed' class closures
@@ -355,12 +520,13 @@ sub _decide_unit {
 sub _do_style_or_direction {
   my ($self, $prev_style) = @_;
 
-  # update as advised by gtk_widget_create_pango_layout()
+  # context_changed() as advised by gtk_widget_create_pango_layout()
   if (my $layout = $self->{'layout'}) {
     $layout->context_changed;
+    delete @{$self}{'digit_width','digit_height'}; # hash slice
   }
 
-  $self->{'decided_width_for'} = 'x';  # possible new font or kerning
+  $self->{'decided_done_for'} = 'x';  # possible new font or kerning
   $self->queue_resize;
   $self->queue_draw;
   return shift->signal_chain_from_overridden(@_);
@@ -468,7 +634,8 @@ Gtk2::Ex::NumAxis -- numeric axis display widget
 =head1 SYNOPSIS
 
  use Gtk2::Ex::NumAxis;
- my $axis = Gtk2::Ex::NumAxis->new (adjustment => $adj);
+ my $axis = Gtk2::Ex::NumAxis->new (adjustment => $adj,
+                                    orientation => 'vertical');
 
 =head1 WIDGET HIERARCHY
 
@@ -489,10 +656,10 @@ A C<Gtk2::Ex::NumAxis> widget displays a vertical axis of values like
     | -- 8.5  |
     |         |
     | -- 9    |
-    |         |
-    | -- 9.5  |
-    |         |
-    | -- 10   |
+    |         |       +--------------------------------------+
+    | -- 9.5  |       |   :       :       :       :       :  |
+    |         |       |  8.5      9      9.5     10     10.5 |
+    | -- 10   |       +--------------------------------------+
     |         |
     | -- 10.5 |
     |         |
@@ -507,25 +674,27 @@ force a certain minimum decimals for example to show dollars and cents.  The
 C<number-to-text> signal allows things like thousands separators or
 different decimal point.
 
-Pixel y=0 is the "value" from the adjustment and the window height is the
-"page" amount, so that pixel y=winheight (one past the bottom of the window)
-is "value+page".  The C<inverted> property swaps that to the "value" at the
-bottom of the display.
+Pixel x=0 or y=0 is the "value" from the adjustment and the window width or
+height is the "page" amount.  The C<inverted> property swaps that to the
+"value" at the bottom or right of the display.
 
 =head2 Size Request
 
-An axis has a desired width, but doesn't ask for any particular height.
-However the height which is applied by the container parent determines the
-step between displayed values, and thus how many decimal places are needed,
-which can affect what width is necessary.
+An vertical axis has a desired width, but doesn't ask for any particular
+height.  Or a horizontal axis conversely has a desired height but no
+particular width.
 
-If the drawing code notices a number shown is wider than a width previously
-requested then a resize is queued.  Hopefully this only happens if a
-C<number-to-text> handler is doing strange things with values.  It
-potentially means a disconcerting size increase while scrolling, but at
-least ensures values are not truncated.  Of course a size request is only
-ever a request, the parent container determines how much space its children
-get.
+For a vertical axis the height applied by the container parent determines
+the step between displayed values, and thus how many decimal places are
+needed, which can affect what width is necessary.  If the drawing code
+notices a number shown is wider than a width previously requested then a
+resize is queued.
+
+Hopefully a resize only happens if a C<number-to-text> handler is doing
+strange things with values.  It potentially means a disconcerting size
+increase while scrolling, but at least ensures values are not truncated.  Of
+course a size request is only ever a request, the parent container
+determines how much space its children get.
 
 A C<Gtk2::Ex::NoShrink> container can help keep a lid on resizing, if for
 instance changes to the Adjustment range would often cause a different
@@ -547,17 +716,23 @@ initial properties per C<< Glib::Object->new >>.
 =item C<< $axis->set_scroll_adjustments ($hadj, $vadj) >>
 
 This usual C<Gtk2::Widget> method sets the C<adjustment> property to
-C<$vadj>.
+C<$hadj> when horizontal or C<$vadj> when vertical.
 
-If there's a horizontal orientation option in the future then when set it
-would take the C<$hadj> instead, probably just from the current orientation,
-not keeping both adjustments and switching between them.
+Currently the respective adjustment is taken from the current orientation.
+The other is not recorded and is not switched to if the orientation is later
+changed.  This is simplest, but is it a good idea?  Orientation changes will
+be a bit unusual, but perhaps it should switch dynamically between the
+adjustments too.
 
 =back
 
 =head1 PROPERTIES
 
 =over 4
+
+=item C<orientation> (enum C<Gtk2::Orientation>, default "vertical")
+
+The direction to draw in the axis, either vertically or horizontally.
 
 =item C<adjustment> (C<Gtk2::Adjustment>, default C<undef>)
 
@@ -566,10 +741,17 @@ blank until an adjustment is set and has a non-zero C<page-size>.
 
 =item C<inverted> (boolean, default 0)
 
-Draw the adjustment C<value> at the bottom of the widget and C<page-size>
-increasing up the window, as opposed to the default of C<value> at the top
-going downwards.  This sense of "inverted" is the same as in a
-C<Gtk2::VScrollbar>.
+Vertically the normal drawing is the adjustment C<value> at the top and
+numbers increasing downwards.  If C<inverted> is true then C<value> is at
+the bottom and numbers increase upwards.
+
+Conversely for horizontal the normal drawing is the adjustment C<value> at
+the left and numbers increasing rightwards.  If C<inverted> is true then
+C<value> is at the right and numbers increase to the left.
+
+The sense of C<inverted> here is the same as a C<Gtk2::HScrollbar> or
+C<Gtk2::VScrollbar>.  If using an NumAxis and a scrollbar together then
+generally the C<inverted> setting should be the same in the two.
 
 =item C<min-decimals> (integer, default 0)
 
@@ -577,9 +759,6 @@ The minimum number of decimal places to show on the numbers.  Further
 decimals are shown if the unit step chosen needs more.
 
 =back
-
-In the future there might be an C<orientation> property for a horizontal
-axis, and perhaps some transforms for log scale or similar.
 
 =head1 SIGNALS
 

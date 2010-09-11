@@ -7,10 +7,13 @@ debian/copyright
 debian/rules
 debian/source/format
 debian/watch
+devel/horizontal.pl
+devel/misc.pl
 devel/numaxis-textview.pl
 devel/run.pl
 devel/screenshot.pl
 examples/builder.pl
+examples/currency-format.pl
 examples/settings.pl
 inc/my_pod2html
 inc/MyMakeMakerExtras.pm

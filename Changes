@@ -17,5 +17,8 @@ with Gtk2-Ex-NumAxis.  If not, see <http://www.gnu.org/licenses/>.
 
 
 
+Version 2, September 2010
+    - new orientation property for horizontal display
+
 Version 1, September 2010
     - the first version.

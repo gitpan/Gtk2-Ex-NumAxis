@@ -35,7 +35,6 @@ use Gtk2 '-init';
 use Gtk2::Ex::NumAxis;
 
 my $toplevel = Gtk2::Window->new('toplevel');
-$toplevel->set_default_size (50, 300);
 $toplevel->signal_connect (destroy => sub { Gtk2->main_quit; });
 
 my $hbox = Gtk2::HBox->new;

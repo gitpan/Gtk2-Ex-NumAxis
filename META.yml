@@ -1,6 +1,6 @@
 --- #YAML:1.0
 name:               Gtk2-Ex-NumAxis
-version:            1
+version:            2
 abstract:           Widget drawing a numbered axis.
 author:
     - Kevin Ryde <user42@zip.com.au>
