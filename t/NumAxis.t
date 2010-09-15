@@ -33,7 +33,26 @@ require Gtk2;
 Gtk2->disable_setlocale;  # leave LC_NUMERIC alone for version nums
 Gtk2->init_check
   or plan skip_all => 'due to no DISPLAY available';
-plan tests => 24;
+plan tests => 31;
+
+{
+  my $want_version = 3;
+  is ($Gtk2::Ex::NumAxis::VERSION, $want_version, 'VERSION variable');
+  is (Gtk2::Ex::NumAxis->VERSION,  $want_version, 'VERSION class method');
+
+  ok (eval { Gtk2::Ex::NumAxis->VERSION($want_version); 1 },
+      "VERSION class check $want_version");
+  my $check_version = $want_version + 1000;
+  ok (! eval { Gtk2::Ex::NumAxis->VERSION($check_version); 1 },
+      "VERSION class check $check_version");
+
+  my $axis = Gtk2::Ex::NumAxis->new;
+  is ($axis->VERSION, $want_version, 'VERSION object method');
+  ok (eval { $axis->VERSION($want_version); 1 },
+      "VERSION object check $want_version");
+  ok (! eval { $axis->VERSION($check_version); 1 },
+      "VERSION object check $check_version");
+}
 
 #------------------------------------------------------------------------------
 is (Gtk2::Ex::NumAxis::_num_integer_digits(0),       1);

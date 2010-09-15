@@ -27,7 +27,7 @@ use POSIX qw(floor ceil);
 # uncomment this to run the ### lines
 #use Smart::Comments;
 
-our $VERSION = 2;
+our $VERSION = 3;
 
 use Glib::Ex::SignalBits;
 use Glib::Ex::SignalIds;
