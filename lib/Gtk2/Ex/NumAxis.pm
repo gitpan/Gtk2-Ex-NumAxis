@@ -1,4 +1,4 @@
-# Copyright 2007, 2008, 2009, 2010 Kevin Ryde
+# Copyright 2007, 2008, 2009, 2010, 2011 Kevin Ryde
 
 # This file is part of Gtk2-Ex-NumAxis.
 #
@@ -27,7 +27,7 @@ use POSIX qw(floor ceil);
 # uncomment this to run the ### lines
 #use Smart::Comments;
 
-our $VERSION = 3;
+our $VERSION = 4;
 
 use Glib::Ex::SignalBits;
 use Glib::Ex::SignalIds;
@@ -38,19 +38,20 @@ use Glib::Object::Subclass
                size_request      => \&_do_size_request,
                style_set         => \&_do_style_or_direction,
                direction_changed => \&_do_style_or_direction,
+               scroll_event      => \&_do_scroll_event,
 
-               'set-scroll-adjustments'
-               => { param_types => ['Gtk2::Adjustment',
-                                    'Gtk2::Adjustment'],
-                    return_type => undef,
-                    class_closure => \&_do_set_scroll_adjustments },
+               'set-scroll-adjustments' =>
+               { param_types => ['Gtk2::Adjustment',
+                                 'Gtk2::Adjustment'],
+                 return_type => undef,
+                 class_closure => \&_do_set_scroll_adjustments },
 
-               'number-to-text'
-               => { param_types => ['Glib::Double','Glib::Int'],
-                    return_type => 'Glib::String',
-                    flags       => ['run-last'],
-                    accumulator => \&Glib::Ex::SignalBits::accumulator_first_defined,
-                    class_closure => \&_do_number_to_text },
+               'number-to-text' =>
+               { param_types => ['Glib::Double','Glib::Int'],
+                 return_type => 'Glib::String',
+                 flags       => ['run-last'],
+                 accumulator => \&Glib::Ex::SignalBits::accumulator_first_defined,
+                 class_closure => \&_do_number_to_text },
 
                # Glib::ParamSpec->scalar
                # ('transform',
@@ -66,15 +67,15 @@ use Glib::Object::Subclass
              },
   properties => [Glib::ParamSpec->object
                  ('adjustment',
-                  'adjustment',
-                  'Blurb.',
+                  'Adjustment object',
+                  'The adjustment object to display values from.',
                   'Gtk2::Adjustment',
                   Glib::G_PARAM_READWRITE),
 
                  Glib::ParamSpec->int
                  ('min-decimals',
-                  'min-decimals',
-                  'Blurb.',
+                  'Minimum decimals',
+                  'A minimum number of decimal places to display.',
                   # range limited to 1000 decimals to try to catch garbage
                   # going in and to try to stop calculated width becoming
                   # something wild
@@ -84,15 +85,22 @@ use Glib::Object::Subclass
 
                  Glib::ParamSpec->boolean
                  ('inverted',
-                  'inverted',
+                  (do { # translation from GtkScrollbar
+                    my $str = 'Inverted';
+                    eval { require Locale::Messages;
+                           Locale::Messages::dgettext('gtk20-properties',$str)
+                           } || $str }),
                   'Invert the scale so numbers are drawn increasing from the bottom up, instead of the default top down.',
                   0,       # default
                   Glib::G_PARAM_READWRITE),
 
-                 # not documented yet ...
                  Glib::ParamSpec->enum
                  ('orientation',
-                  'orientation',
+                  (do { # translation from GtkOrientable
+                    my $str = 'Orientation';
+                    eval { require Locale::Messages;
+                           Locale::Messages::dgettext('gtk20-properties',$str)
+                           } || $str }),
                   'Horizontal or vertical display and scrolling.',
                   'Gtk2::Orientation',
                   'vertical',
@@ -102,6 +110,7 @@ use Glib::Object::Subclass
 
 
 # as fraction of digit width
+# these not documented, could be properties or style properties
 use constant { TICK_WIDTH_FRAC => 0.8,
                TICK_GAP_FRAC   => 0.5,
                TICK_HEIGHT_FRAC  => 0.4,
@@ -144,6 +153,49 @@ sub _do_set_scroll_adjustments {
   my ($self, $hadj, $vadj) = @_;
   $self->set (adjustment => ($self->get('orientation') eq 'horizontal'
                              ? $hadj : $vadj));
+}
+
+# my %direction_to_orientation = (up    => 'vertical',
+#                                 down  => 'vertical',
+#                                 left  => 'horizontal',
+#                                 right => 'horizontal');
+
+# 'scroll-event' class closure
+sub _do_scroll_event {
+  my ($self, $event) = @_;
+  ### _do_numaxis_scroll(): $event->direction
+  if (my $adj = $self->{'adjustment'}) {
+    _adjustment_scroll_event ($adj, $event, $self->{'inverted'});
+  }
+  return $self->signal_chain_from_overridden ($event);
+}
+
+my %direction_inverted = (up => 1,
+                             down => 0,
+                             left => 1,
+                             right => 0);
+# $event is a Gtk2::Gdk::Event::Scroll
+sub _adjustment_scroll_event {
+  my ($adj, $event, $inverted) = @_;
+  my $inctype = ($event->state & 'control-mask'
+                 ? 'page_increment'
+                 : 'step_increment');
+  my $add = $adj->$inctype;
+  unless ((!$inverted) ^ $direction_inverted{$event->direction}) {
+    $add = -$add;
+  }
+  _adjustment_scroll_value ($adj, $add);
+}
+sub _adjustment_scroll_value {
+  my ($adj, $add) = @_;
+  my $oldval = $adj->value;
+  $adj->value (max ($adj->lower,
+                    min ($adj->upper - $adj->page_size,
+                         $oldval + $add)));
+  if ($adj->value != $oldval) {
+    $adj->notify ('value');
+    $adj->signal_emit ('value-changed');
+  }
 }
 
 # 'size-request' class closure
@@ -214,6 +266,7 @@ sub _do_expose_event {
     my $method = $wh{$orientation};
     $self->allocation->$method
   };
+  my $clip_rect = $event->area;
 
   my $factor    = $win_pixels / $page_size;
   my $offset    = 0;
@@ -248,9 +301,12 @@ sub _do_expose_event {
   my $n = Math::Round::nhimult ($unit, $lo);
   ### loop: "$lo to $hi, starting $n"
 
+
+  # ENHANCE-ME: stop looping when a string goes past the end of the
+  # $clip_rect, in whichever direction
+
   if ($orientation eq 'horizontal') {
     my $decided_height = _decide_height($self);
-    my $digit_height = $self->{'digit_height'};
     my $tick_height = ceil (TICK_HEIGHT_FRAC * $digit_height);
     my $text_y = $tick_height + ceil (TICK_VGAP_FRAC * $digit_height);
 
@@ -274,7 +330,7 @@ sub _do_expose_event {
       $style->paint_layout ($win,
                             $state,
                             1,  # use_text, for the text gc instead of the fg one
-                            $event->area,
+                            $clip_rect,
                             $self,       # widget
                             __PACKAGE__, # style detail string
                             $text_x,
@@ -321,7 +377,7 @@ sub _do_expose_event {
       $style->paint_layout ($win,
                             $state,
                             1,  # use_text, for the text gc instead of the fg one
-                            $event->area,
+                            $clip_rect,
                             $self,       # widget
                             __PACKAGE__, # style detail string
                             $text_x,
@@ -623,7 +679,7 @@ sub _num_integer_digits {
 1;
 __END__
 
-=for stopwords NumAxis VScrollbar boolean subr resize BUILDABLE Gtk2-Ex-NumAxis Ryde
+=for stopwords NumAxis VScrollbar boolean subr resize BUILDABLE Gtk2-Ex-NumAxis Ryde enum scrollbar Gtk
 
 =head1 NAME
 
@@ -658,7 +714,7 @@ A C<Gtk2::Ex::NumAxis> widget displays a vertical axis of values like
     | -- 9    |
     |         |       +--------------------------------------+
     | -- 9.5  |       |   :       :       :       :       :  |
-    |         |       |  8.5      9      9.5     10     10.5 |
+    |         |       |  8.2     8.4     8.6     8.8     9.0 |
     | -- 10   |       +--------------------------------------+
     |         |
     | -- 10.5 |
@@ -666,37 +722,48 @@ A C<Gtk2::Ex::NumAxis> widget displays a vertical axis of values like
     +---------+
 
 The numbers are the "page" portion of a C<Gtk2::Adjustment> and update with
-changes in that Adjustment.  A unit step 1, 2 or 5 for the display is chosen
-according to what fits in the window.
+changes in that Adjustment.  A unit step is chosen automatically according
+to what fits in the window, by either 1, 2 or 5.
 
-Decimal places are added as necessary and the C<min-decimals> property can
+Decimal places are shown as necessary and the C<min-decimals> property can
 force a certain minimum decimals for example to show dollars and cents.  The
-C<number-to-text> signal allows things like thousands separators or
+C<number-to-text> signal allows formatting like a thousands separator or
 different decimal point.
 
 Pixel x=0 or y=0 is the "value" from the adjustment and the window width or
 height is the "page" amount.  The C<inverted> property swaps that to the
-"value" at the bottom or right of the display.
+"value" at the bottom or right of the display.  (This is the same sense as
+"inverted" on C<Gtk2::Scrollbar>.)
+
+=head2 Scrolling
+
+A C<scroll-event> handler moves the Adjustment for mouse wheel and similar
+events arriving on the NumAxis.  If the control key is held down then it's
+moved by C<page-increment>, otherwise C<step-increment>.
+
+In a horizontal NumAxis an C<up> and C<down> scroll is applied as well as
+C<right> and C<left>.  Conversely a vertical takes C<right> and C<left> too.
+This is a bit experimental but allows a mouse with only a vertical wheel to
+move a horizontal NumAxis.
 
 =head2 Size Request
 
-An vertical axis has a desired width, but doesn't ask for any particular
-height.  Or a horizontal axis conversely has a desired height but no
+A vertical NumAxis has a desired width, but doesn't ask for any particular
+height.  A horizontal NumAxis conversely has a desired height but no
 particular width.
 
-For a vertical axis the height applied by the container parent determines
-the step between displayed values, and thus how many decimal places are
-needed, which can affect what width is necessary.  If the drawing code
-notices a number shown is wider than a width previously requested then a
-resize is queued.
+For a vertical NumAxis the height provided by the container parent
+determines the step between displayed values and thus how many decimal
+places are needed, which can in turn affect what width is necessary.
 
-Hopefully a resize only happens if a C<number-to-text> handler is doing
-strange things with values.  It potentially means a disconcerting size
-increase while scrolling, but at least ensures values are not truncated.  Of
-course a size request is only ever a request, the parent container
-determines how much space its children get.
+If the drawing code notices a number shown is wider than a width previously
+requested then a resize is queued.  Hopefully such a resize only happens if
+a C<number-to-text> handler is doing strange things.  It may cause a
+disconcerting size increase while scrolling, but at least ensures values are
+not truncated.  Of course a size request is only ever a request, the parent
+container determines how much space its children get.
 
-A C<Gtk2::Ex::NoShrink> container can help keep a lid on resizing, if for
+A C<Gtk2::Ex::NoShrink> container can help keep a lid on resizing if for
 instance changes to the Adjustment range would often cause a different
 width.
 
@@ -718,11 +785,11 @@ initial properties per C<< Glib::Object->new >>.
 This usual C<Gtk2::Widget> method sets the C<adjustment> property to
 C<$hadj> when horizontal or C<$vadj> when vertical.
 
-Currently the respective adjustment is taken from the current orientation.
-The other is not recorded and is not switched to if the orientation is later
-changed.  This is simplest, but is it a good idea?  Orientation changes will
-be a bit unusual, but perhaps it should switch dynamically between the
-adjustments too.
+Currently either C<$hadj> or C<$vadj> is taken according to the current
+orientation.  The other is not recorded and is not switched to if the
+orientation is later changed.  This is simplest, but is it a good idea?
+Orientation changes will be a bit unusual, but perhaps it should switch
+dynamically between the adjustments too.
 
 =back
 
@@ -737,26 +804,27 @@ The direction to draw in the axis, either vertically or horizontally.
 =item C<adjustment> (C<Gtk2::Adjustment>, default C<undef>)
 
 The adjustment object giving the values to display and track.  NumAxis is
-blank until an adjustment is set and has a non-zero C<page-size>.
+blank until an adjustment is set and it has a non-zero C<page-size>.
 
 =item C<inverted> (boolean, default 0)
 
-Vertically the normal drawing is the adjustment C<value> at the top and
-numbers increasing downwards.  If C<inverted> is true then C<value> is at
-the bottom and numbers increase upwards.
+For vertical the normal drawing is the adjustment C<value> at the top and
+numbers increasing downwards.  If C<inverted> is true then instead C<value>
+is at the bottom and numbers increase upwards.
 
-Conversely for horizontal the normal drawing is the adjustment C<value> at
-the left and numbers increasing rightwards.  If C<inverted> is true then
-C<value> is at the right and numbers increase to the left.
+Conversely for horizontal the normal drawing is adjustment C<value> at the
+left and numbers increasing rightwards.  If C<inverted> is true then instead
+C<value> at the right and numbers increasing to the left.
 
-The sense of C<inverted> here is the same as a C<Gtk2::HScrollbar> or
+This sense of C<inverted> is the same as C<Gtk2::HScrollbar> or
 C<Gtk2::VScrollbar>.  If using an NumAxis and a scrollbar together then
 generally the C<inverted> setting should be the same in the two.
 
 =item C<min-decimals> (integer, default 0)
 
 The minimum number of decimal places to show on the numbers.  Further
-decimals are shown if the unit step chosen needs more.
+decimals are shown if the unit step chosen needs more, but at least this
+many are always shown.
 
 =back
 
@@ -767,9 +835,9 @@ decimals are shown if the unit step chosen needs more.
 =item C<number-to-text> ($number double, $decimals int -> return string)
 
 Callback to format a number for display with a given number of decimal
-places.  The default display is a plain C<sprintf("%.*f")>.  This signal
-allows things like a thousands separator or different decimal point.  For
-example using C<Number::Format>,
+places.  The default display is an C<sprintf("%.*f")>.  This signal allows
+things like a thousands separator or different decimal point.  For example a
+C<Number::Format>,
 
     my $nf = Number::Format->new (-thousands_sep => ' ',
                                   -decimal_point => ',');
@@ -781,24 +849,25 @@ example using C<Number::Format>,
     $axis->signal_connect (number_to_text
                            => \&my_number_to_text_handler);
 
-The C<$decimals> parameter is how many decimals are being shown.  This is at
-least C<min-decimals> but can be more if a higher resolution fits in the
-axis window.  The handler can decide how many trailing zeros to actually
-show.
+The C<$decimals> parameter is how many decimals are being shown.  This is
+either C<min-decimals> or more if a higher resolution fits in the axis
+window.  The handler can decide how many trailing zeros to actually show (or
+any separator within the decimals, etc).
 
-Strings formed shouldn't be too bizarre, mainly because the widget width is
-established just from some representative high and low values.  Things like
-+/- sign or leading and trailing zeros are fine.
+Strings formed shouldn't be too bizarre, mainly because the NumAxis width is
+established just from some representative values based on the adjustment
+C<upper> and C<lower> (but not necessarily those particular values).  Things
+like +/- sign or leading and trailing zeros are fine.
 
 =back
 
 =head1 BUILDABLE
 
 C<Gtk2::Ex::NumAxis> inherits the usual widget C<Gtk2::Buildable> interface
-in Gtk 2.12 and up, allowing C<Gtk2::Builder> to construct a NumAxis.  The
-class name is C<Gtk2__Ex__NumAxis> and properties and signal handlers can be
-set in the usual way.  Here's a sample fragment, or see
-F<examples/builder.pl> in the NumAxis sources for a complete program.
+in Gtk 2.12 and up, so C<Gtk2::Builder> can construct a NumAxis.  The class
+name is C<Gtk2__Ex__NumAxis> and properties and signal handlers can be set
+in the usual way.  Here's a sample fragment, or see F<examples/builder.pl>
+in the NumAxis sources for a complete program.
 
     <object class="Gtk2__Ex__NumAxis" id="my_axis">
       <property name="adjustment">my_adj</property>
@@ -819,7 +888,7 @@ L<http://user42.tuxfamily.org/gtk2-ex-numaxis/index.html>
 
 =head1 COPYRIGHT
 
-Copyright 2007, 2008, 2009, 2010 Kevin Ryde
+Copyright 2007, 2008, 2009, 2010, 2011 Kevin Ryde
 
 Gtk2-Ex-NumAxis is free software; you can redistribute it and/or modify
 it under the terms of the GNU General Public License as published by the

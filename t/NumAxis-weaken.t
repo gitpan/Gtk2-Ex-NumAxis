@@ -1,6 +1,6 @@
 #!/usr/bin/perl -w
 
-# Copyright 2007, 2008, 2009, 2010 Kevin Ryde
+# Copyright 2007, 2008, 2009, 2010, 2011 Kevin Ryde
 
 # This file is part of Gtk2-Ex-NumAxis.
 #
@@ -49,7 +49,7 @@ require Gtk2::Ex::NumAxis;
   my $leaks = Test::Weaken::leaks (sub { Gtk2::Ex::NumAxis->new });
   is ($leaks, undef, 'deep garbage collection');
   if ($leaks && defined &explain) {
-    diag "Test-Weaken ", explain $leaks;
+    diag "Test-Weaken ", explain($leaks);
   }
 }
 
@@ -62,7 +62,7 @@ require Gtk2::Ex::NumAxis;
      });
   is ($leaks, undef, 'deep garbage collection -- with adjustment');
   if ($leaks && defined &explain) {
-    diag "Test-Weaken ", explain $leaks;
+    diag "Test-Weaken ", explain($leaks);
   }
 }
 

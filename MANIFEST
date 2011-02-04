@@ -10,6 +10,7 @@ debian/watch
 devel/horizontal.pl
 devel/misc.pl
 devel/numaxis-textview.pl
+devel/prop-nicks.pl
 devel/run.pl
 devel/screenshot.pl
 examples/builder.pl
@@ -24,6 +25,7 @@ MANIFEST.SKIP
 SIGNATURE
 t/MyTestHelpers.pm
 t/NumAxis-buildable.t
+t/NumAxis-load.t
 t/NumAxis-weaken.t
 t/NumAxis.t
 xt/0-META-read.t

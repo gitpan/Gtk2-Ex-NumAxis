@@ -1,4 +1,4 @@
-Copyright 2010 Kevin Ryde
+Copyright 2010, 2011 Kevin Ryde
 
 This file is part of Gtk2-Ex-NumAxis.
 
@@ -16,6 +16,9 @@ You should have received a copy of the GNU General Public License along
 with Gtk2-Ex-NumAxis.  If not, see <http://www.gnu.org/licenses/>.
 
 
+
+Version 4, February 2011
+    - new scroll-event handler
 
 Version 3, September 2010
     - test manifest only as an author test

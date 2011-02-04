@@ -1,6 +1,6 @@
 #!/usr/bin/perl
 
-# Copyright 2010 Kevin Ryde
+# Copyright 2010, 2011 Kevin Ryde
 
 # This file is part of Gtk2-Ex-NumAxis.
 #
@@ -44,16 +44,16 @@ MyMakeMakerExtras::WriteMakefile
                     'Math::Round' => 0,
                    },
 
-   META_MERGE
-   => { resources
-        => { homepage => 'http://user42.tuxfamily.org/gtk2-ex-numaxis/index.html' },
-        optional_features
-        => { maximum_tests
-             => { description => 'Have "make test" do as much as possible.',
-                  requires => { 'Test::Weaken' => 3,
-                                'Test::Weaken::Gtk2' => 0,
-                              },
-                },
-           },
-      },
+   META_MERGE =>
+   { resources =>
+     { homepage => 'http://user42.tuxfamily.org/gtk2-ex-numaxis/index.html' },
+     optional_features =>
+     { maximum_tests =>
+       { description => 'Have "make test" do as much as possible.',
+         requires => { 'Test::Weaken' => 3,
+                       'Test::Weaken::Gtk2' => 0,
+                     },
+       },
+     },
+   },
   );

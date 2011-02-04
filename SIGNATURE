@@ -1,5 +1,5 @@
 This file contains message digests of all files listed in MANIFEST,
-signed via the Module::Signature module, version 0.63.
+signed via the Module::Signature module, version 0.66.
 
 To verify the content in this distribution, first make sure you have
 Module::Signature installed, then type:
@@ -15,33 +15,35 @@ not run its Makefile.PL or Build.PL.
 Hash: SHA1
 
 SHA1 842745cb706f8f2126506f544492f7a80dbe29b3 COPYING
-SHA1 fe5710ab6137162a08842fc7437634e05cc680de Changes
-SHA1 3b06d3a2e47859e12b3f30efb2442766044e9416 MANIFEST
-SHA1 e6e7c2904ea5d300c0ddf70fc5a80f5005229aa9 MANIFEST.SKIP
-SHA1 f9ffd802b2445656d5bf658a04f57f3b13fb98c9 META.yml
-SHA1 8e3760d50b10698314ba528d419392c427ba8a40 Makefile.PL
-SHA1 e5c66c75b031f3c210c8909f154599fb5201cdc1 debian/changelog
+SHA1 bf0d7fe8996115438f0bff75da546d084f0dd896 Changes
+SHA1 55bb461c26f38db8e2cde4419365f44af3de34fd MANIFEST
+SHA1 e725bd968b00d88cc13780dd826d5c8d6546d62a MANIFEST.SKIP
+SHA1 d17042fafdd7a93369ce30fa92998fb5e28d71a7 META.yml
+SHA1 5f7d787290bf4ab1c3f8efcff8793a70229d428e Makefile.PL
+SHA1 d18c37c21468c49a09966ec3148692c0601ca526 debian/changelog
 SHA1 ac3478d69a3c81fa62e60f5c3696165a4e5e6ac4 debian/compat
 SHA1 00037044417e56dff474a4632ff6e357ec8170ee debian/control
-SHA1 21f3519bc735108e5c9f9c523a74b156c2d0a25c debian/copyright
+SHA1 60fd54adf3b32b451bce04578bd9341c1fd8654a debian/copyright
 SHA1 1a7c155a471bd803baa79a5ed89e2724d6d40bf7 debian/rules
 SHA1 61652cd1568dcf2614df833eba241755eee34e89 debian/source/format
 SHA1 52766c7702bb1e0178cc41cdc203f60164a68a0a debian/watch
 SHA1 fc9dfb7730ee6ea10207ea23949deb53afc63c92 devel/horizontal.pl
 SHA1 b3b65c40a794f96ecc66f1e1fb96d8aeff2206f3 devel/misc.pl
 SHA1 1f2d73b73b11ead39466678f8c95aa34ed8f42d8 devel/numaxis-textview.pl
-SHA1 e84fa26e15ccff7801e06d39b691137e52568f2f devel/run.pl
+SHA1 64884a8c6655b1d7b87102dce095779b7583ffa7 devel/prop-nicks.pl
+SHA1 7c3166e1d6d200b667c7e6542881e59c9a427056 devel/run.pl
 SHA1 19ef230278c646e08bbb39f24a55d47446e70b0a devel/screenshot.pl
 SHA1 8087a6ed81419f03764b50a61bff2ec2c98266ef examples/builder.pl
 SHA1 c9ac979376f3abbf7d7f9b3a6599a03ac0261600 examples/currency-format.pl
 SHA1 96a0d7302382b877cdd0723d7f88c85175e4aae0 examples/settings.pl
-SHA1 78799545010992cffca900fc4e2e96667e069b54 inc/MyMakeMakerExtras.pm
-SHA1 692a1ddc2ca6b98cac7b48ea40bc1ac1509e8ed9 inc/my_pod2html
-SHA1 bc984039c79200480888418502966e8b6b49d41b lib/Gtk2/Ex/NumAxis.pm
-SHA1 cc9d34bca6c40211dd6aa8fee844bb1a7f908461 t/MyTestHelpers.pm
+SHA1 64711d9f54476ad5feff40cfdc2c885fe805ef10 inc/MyMakeMakerExtras.pm
+SHA1 7a988b2aa7ed09f1cb9029a1ef3f0e2139dca0cf inc/my_pod2html
+SHA1 eed99a9cbd487643aea65a6055ab686e72c703b5 lib/Gtk2/Ex/NumAxis.pm
+SHA1 fd7ad68d9696ce2b58655b9d6c006c12540878cd t/MyTestHelpers.pm
 SHA1 836dc8aaa7c1f096c1d31dc2944aab942266ed18 t/NumAxis-buildable.t
-SHA1 738dc74e5ffa5547d64abe5734dc31740ac33be6 t/NumAxis-weaken.t
-SHA1 d39439a4c061dfae3ed25cef9b836f845fce949b t/NumAxis.t
+SHA1 18c10aa25ce78dccb3046fe05f420638a888c445 t/NumAxis-load.t
+SHA1 28a0b0aec3e88dc64a09cd1f13ec4643ba5606ac t/NumAxis-weaken.t
+SHA1 10501c3afafbd00699db9691c647eaaa6fb70942 t/NumAxis.t
 SHA1 9127f78a0dfa04976acbb979dd7862ef59a74c58 xt/0-META-read.t
 SHA1 37abd43b41068804ea4bb099fdd89af21be82926 xt/0-Test-DistManifest.t
 SHA1 8f93fb4c8f0424a4442cc93c9a2e86342ef55281 xt/0-Test-Pod.t
@@ -50,7 +52,7 @@ SHA1 fb517c2fae5ddac559318bf6a224949115ea3129 xt/0-Test-YAML-Meta.t
 -----BEGIN PGP SIGNATURE-----
 Version: GnuPG v1.4.10 (GNU/Linux)
 
-iD8DBQFMkTA5LFMCIV9q3ToRAt3JAJ9DkKNmfdDZEomen+/gvkTdhqzRZgCfQyC+
-/OldkTwMTvMfOxvqRbNTVeo=
-=xpfo
+iD8DBQFNTH/+LFMCIV9q3ToRAgCbAKCV84any5VYPtLkHJd8wK1T8OPOVgCfcOcG
+0RVL5eOafFJkldCET9Vkiek=
+=3RN2
 -----END PGP SIGNATURE-----

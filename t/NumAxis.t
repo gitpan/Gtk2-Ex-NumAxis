@@ -1,6 +1,6 @@
 #!/usr/bin/perl -w
 
-# Copyright 2007, 2008, 2009, 2010 Kevin Ryde
+# Copyright 2007, 2008, 2009, 2010, 2011 Kevin Ryde
 
 # This file is part of Gtk2-Ex-NumAxis.
 #
@@ -36,7 +36,7 @@ Gtk2->init_check
 plan tests => 31;
 
 {
-  my $want_version = 3;
+  my $want_version = 4;
   is ($Gtk2::Ex::NumAxis::VERSION, $want_version, 'VERSION variable');
   is (Gtk2::Ex::NumAxis->VERSION,  $want_version, 'VERSION class method');
 
@@ -55,10 +55,13 @@ plan tests => 31;
 }
 
 #------------------------------------------------------------------------------
-is (Gtk2::Ex::NumAxis::_num_integer_digits(0),       1);
-is (Gtk2::Ex::NumAxis::_num_integer_digits(99),      2);
-is (Gtk2::Ex::NumAxis::_num_integer_digits(100.25),  3);
-is (Gtk2::Ex::NumAxis::_num_integer_digits(-100.25), 3);
+{
+  ## no critic (ProtectPrivateSubs)
+  is (Gtk2::Ex::NumAxis::_num_integer_digits(0),       1);
+  is (Gtk2::Ex::NumAxis::_num_integer_digits(99),      2);
+  is (Gtk2::Ex::NumAxis::_num_integer_digits(100.25),  3);
+  is (Gtk2::Ex::NumAxis::_num_integer_digits(-100.25), 3);
+}
 
 #------------------------------------------------------------------------------
 {

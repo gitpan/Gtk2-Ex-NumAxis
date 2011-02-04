@@ -1,6 +1,6 @@
 #!/usr/bin/perl -w
 
-# Copyright 2008, 2009, 2010 Kevin Ryde
+# Copyright 2008, 2009, 2010, 2011 Kevin Ryde
 
 # This file is part of Gtk2-Ex-NumAxis.
 #
@@ -21,11 +21,13 @@ use strict;
 use warnings;
 use POSIX;
 use Gtk2;
-use Glib::Ex::ConnectProperties;
 use Gtk2::Ex::NumAxis;
 
 use FindBin;
 my $progname = $FindBin::Script;
+
+# uncomment this to run the ### lines
+use Smart::Comments;
 
 {
   my ($unit, $decimals) = Gtk2::Ex::NumAxis::round_up_2_5_pow_10 (100);
@@ -40,17 +42,16 @@ my $progname = $FindBin::Script;
   print "$progname: $unit $decimals\n";
 }
 
-Gtk2->disable_setlocale;  # leave LC_NUMERIC alone for version nums
 Gtk2->init;
 
 my $toplevel = Gtk2::Window->new('toplevel');
 $toplevel->set_default_size (-1, 500);
 
-my $hbox = Gtk2::HBox->new (0,0);
-$toplevel->add ($hbox);
+my $box = Gtk2::HBox->new (0,0);
+$toplevel->add ($box);
 
 my $vbox = Gtk2::VBox->new (0,0);
-$hbox->pack_start ($vbox, 0,0,0);
+$box->pack_start ($vbox, 0,0,0);
 
 use constant LOG_E_10 => 2.30258509299404568402;
 
@@ -67,56 +68,75 @@ if (0) {
                                     transform   => \&POSIX::exp10,
                                     untransform => \&POSIX::log10,
                                    );
-  $hbox->add($axis);
+  $box->add($axis);
 
-  my $vscroll = Gtk2::VScrollbar->new($adj);
-  $hbox->add($vscroll);
+  my $scrollbar = Gtk2::Scrollbar->new($adj);
+  $box->add($scrollbar);
 }
 
 my $adj = Gtk2::Adjustment->new (-100, # value
                                  -1000, # lower
                                  1000,  # upper
-                                 10,   # step increment
-                                 100,  # page increment
+                                 1,   # step increment
+                                 10,  # page increment
                                  20); # page size
+### adj: "$adj"
 my $axis = Gtk2::Ex::NumAxis->new(adjustment => $adj,
                                   inverted => 1,
                                   min_decimals => 2);
+$axis->add_events (['button-press-mask']);
 # $axis->signal_connect (number_to_text => sub {
 #                          my ($axis, $number, $decimals) = @_;
 #                          return sprintf "%.*f\nblah", $decimals, $number;
 #                         });
-$hbox->add($axis);
+my %vertical_to_horiziontal = (vertical   => 'horizontal',
+                               horizontal => 'vertical');
+require Glib::Ex::ConnectProperties;
+Glib::Ex::ConnectProperties->new ([$axis,'orientation'],
+                                  [$box,'orientation',
+                                   hash_in => \%vertical_to_horiziontal,
+                                   hash_out => \%vertical_to_horiziontal]);
+$box->add($axis);
+### axis: "$axis"
 
 if (0) {
   my $adj = Gtk2::Adjustment->new (1000, -1000, 10000, 100, 1000, 8000);
   my $vscale = Gtk2::VScale->new($adj);
   $vscale->set('digits', 2);
-  $hbox->add($vscale);
+  $box->add($vscale);
 }
 
 if (1) {
   #   my $adj = Gtk2::Adjustment->new (100, -100, 1000, 10, 100, 800);
-  my $vruler = Gtk2::VRuler->new();
-  #  $vruler->set('digits', 2);
+  #  $ruler->set('digits', 2);
+  my $ruler = Gtk2::VRuler->new;
   $adj->signal_connect ('value-changed' => sub {
                           my ($adj) = @_;
-                          # $vruler->set_range ($adj->lower, $adj->upper,
+                          # $ruler->set_range ($adj->lower, $adj->upper,
                           #                     $adj->value, 999);
-                          $vruler->set_range ($adj->value,
-                                              $adj->value + $adj->page_size,
-                                              $adj->value, 999);
+                          $ruler->set_range ($adj->value,
+                                             $adj->value + $adj->page_size,
+                                             $adj->value, 999);
                         });
-  $hbox->add($vruler);
+  Glib::Ex::ConnectProperties->new ([$axis,'orientation'],
+                                    [$ruler,'orientation']);
+  $box->add($ruler);
+  ### ruler: "$ruler"
 }
 
-my $vscroll = Gtk2::VScrollbar->new($adj);
-$hbox->pack_start($vscroll, 0,0,0);
+{
+  my $scrollbar = Gtk2::VScrollbar->new($adj);
+  ### scrollbar: "$scrollbar"
+  $box->pack_start($scrollbar, 0,0,0);
+  Glib::Ex::ConnectProperties->new ([$axis,'inverted'],
+                                    [$scrollbar,'inverted']);
+  Glib::Ex::ConnectProperties->new ([$axis,'orientation'],
+                                    [$scrollbar,'orientation']);
+}
 
 {
   my $button = Gtk2::CheckButton->new_with_label ("inverted");
   Glib::Ex::ConnectProperties->new ([$axis,'inverted'],
-                                    [$vscroll,'inverted'],
                                     [$button,'active']);
   $vbox->pack_start ($button, 0,0,0);
 }
@@ -127,10 +147,23 @@ $hbox->pack_start($vscroll, 0,0,0);
   $vbox->pack_start ($spin, 0,0,0);
 }
 {
+  my $spin = Gtk2::SpinButton->new_with_range (0, 2*$adj->page_size, 1);
+  Glib::Ex::ConnectProperties->new ([$adj,'step-increment'],
+                                    [$spin,'value']);
+  $vbox->pack_start ($spin, 0,0,0);
+}
+{
   my $spin = Gtk2::SpinButton->new_with_range (0, 50, 1);
   Glib::Ex::ConnectProperties->new ([$axis,'min-decimals'],
                                     [$spin,'value']);
   $vbox->pack_start ($spin, 0,0,0);
+}
+{
+  require Gtk2::Ex::ComboBox::Enum;
+  my $combo = Gtk2::Ex::ComboBox::Enum->new (enum_type => 'Gtk2::Orientation');
+  Glib::Ex::ConnectProperties->new ([$axis,'orientation'],
+                                    [$combo,'active-nick']);
+  $vbox->pack_start ($combo, 0,0,0);
 }
 
 $toplevel->show_all;
