@@ -17,6 +17,9 @@ with Gtk2-Ex-NumAxis.  If not, see <http://www.gnu.org/licenses/>.
 
 
 
+Version 5, May 2011
+    - use Gtk2::Ex::AdjustmentBits
+
 Version 4, February 2011
     - new scroll-event handler
 

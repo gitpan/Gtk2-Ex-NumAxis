@@ -36,7 +36,7 @@ Gtk2->init_check
 plan tests => 31;
 
 {
-  my $want_version = 4;
+  my $want_version = 5;
   is ($Gtk2::Ex::NumAxis::VERSION, $want_version, 'VERSION variable');
   is (Gtk2::Ex::NumAxis->VERSION,  $want_version, 'VERSION class method');
 

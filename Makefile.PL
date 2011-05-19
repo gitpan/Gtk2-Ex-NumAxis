@@ -39,8 +39,13 @@ MyMakeMakerExtras::WriteMakefile
 
                     'Gtk2' => '1.220',
 
+                    # my Glib-Ex-ObjectBits
                     'Glib::Ex::SignalIds'  => 1,
-                    'Glib::Ex::SignalBits' => 9, # new in version 9
+                    'Glib::Ex::SignalBits' => 9, # new in v.9
+
+                    # my Gtk2-Ex-WidgetBits
+                    'Gtk2::Ex::AdjustmentBits' => 40, # new in v.40
+
                     'Math::Round' => 0,
                    },
 
@@ -48,12 +53,17 @@ MyMakeMakerExtras::WriteMakefile
    { resources =>
      { homepage => 'http://user42.tuxfamily.org/gtk2-ex-numaxis/index.html' },
      optional_features =>
-     { maximum_tests =>
-       { description => 'Have "make test" do as much as possible.',
-         requires => { 'Test::Weaken' => 3,
-                       'Test::Weaken::Gtk2' => 0,
-                     },
-       },
+     {
+      maximum_interoperation =>
+      { description => 'Have maximum inter-operation with other modules (optional other stuff).',
+        requires => { 'Locale::Messages' => 0 },
+      },
+      maximum_tests =>
+      { description => 'Have "make test" do as much as possible.',
+        requires => { 'Test::Weaken' => 3,
+                      'Test::Weaken::Gtk2' => 0,
+                    },
+      },
      },
    },
   );

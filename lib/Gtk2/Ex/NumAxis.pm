@@ -23,11 +23,12 @@ use Gtk2 1.220;
 use List::Util qw(min max);
 use Math::Round;
 use POSIX qw(floor ceil);
+use Gtk2::Ex::AdjustmentBits;
 
 # uncomment this to run the ### lines
 #use Smart::Comments;
 
-our $VERSION = 4;
+our $VERSION = 5;
 
 use Glib::Ex::SignalBits;
 use Glib::Ex::SignalIds;
@@ -163,7 +164,7 @@ sub _do_set_scroll_adjustments {
 # 'scroll-event' class closure
 sub _do_scroll_event {
   my ($self, $event) = @_;
-  ### _do_numaxis_scroll(): $event->direction
+  ### NumAxis _do_scroll_event(): $event->direction
   if (my $adj = $self->{'adjustment'}) {
     _adjustment_scroll_event ($adj, $event, $self->{'inverted'});
   }
@@ -171,9 +172,9 @@ sub _do_scroll_event {
 }
 
 my %direction_inverted = (up => 1,
-                             down => 0,
-                             left => 1,
-                             right => 0);
+                          down => 0,
+                          left => 1,
+                          right => 0);
 # $event is a Gtk2::Gdk::Event::Scroll
 sub _adjustment_scroll_event {
   my ($adj, $event, $inverted) = @_;
@@ -184,18 +185,7 @@ sub _adjustment_scroll_event {
   unless ((!$inverted) ^ $direction_inverted{$event->direction}) {
     $add = -$add;
   }
-  _adjustment_scroll_value ($adj, $add);
-}
-sub _adjustment_scroll_value {
-  my ($adj, $add) = @_;
-  my $oldval = $adj->value;
-  $adj->value (max ($adj->lower,
-                    min ($adj->upper - $adj->page_size,
-                         $oldval + $add)));
-  if ($adj->value != $oldval) {
-    $adj->notify ('value');
-    $adj->signal_emit ('value-changed');
-  }
+  Gtk2::Ex::AdjustmentBits::scroll_value ($adj, $add);
 }
 
 # 'size-request' class closure
@@ -782,8 +772,8 @@ initial properties per C<< Glib::Object->new >>.
 
 =item C<< $axis->set_scroll_adjustments ($hadj, $vadj) >>
 
-This usual C<Gtk2::Widget> method sets the C<adjustment> property to
-C<$hadj> when horizontal or C<$vadj> when vertical.
+This is the usual C<Gtk2::Widget> method setting the C<adjustment> property
+to C<$hadj> when horizontal or C<$vadj> when vertical.
 
 Currently either C<$hadj> or C<$vadj> is taken according to the current
 orientation.  The other is not recorded and is not switched to if the
@@ -846,8 +836,8 @@ C<Number::Format>,
       return $nf->format_number ($number, $decimals,
                                  1); # include trailing zeros
     }
-    $axis->signal_connect (number_to_text
-                           => \&my_number_to_text_handler);
+    $axis->signal_connect (number_to_text =>
+                           \&my_number_to_text_handler);
 
 The C<$decimals> parameter is how many decimals are being shown.  This is
 either C<min-decimals> or more if a higher resolution fits in the axis
